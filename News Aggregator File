@@ -1,0 +1,174 @@
+import requests
+import webbrowser
+
+API_KEY = "YOUR_API_KEY_HERE"
+
+BASE_URL = "https://newsapi.org/v2"
+
+
+def fetch_news(endpoint, params):
+    """Fetch news articles from the API."""
+    params["apiKey"] = API_KEY
+
+    try:
+        response = requests.get(
+            f"{BASE_URL}/{endpoint}",
+            params=params,
+            timeout=15
+        )
+
+        response.raise_for_status()
+        data = response.json()
+
+        if data.get("status") != "ok":
+            print("Error:", data.get("message", "Unable to fetch news."))
+            return []
+
+        return data.get("articles", [])
+
+    except requests.exceptions.Timeout:
+        print("Request timed out. Please try again.")
+    except requests.exceptions.ConnectionError:
+        print("No internet connection.")
+    except requests.exceptions.HTTPError:
+        print("API error:", response.status_code)
+    except requests.exceptions.RequestException as error:
+        print("Request failed:", error)
+    except ValueError:
+        print("Invalid response received from the server.")
+
+    return []
+
+
+def display_news(articles):
+    """Display news articles in the terminal."""
+    if not articles:
+        print("\nNo news articles found.")
+        return
+
+    for index, article in enumerate(articles, start=1):
+        source = article.get("source", {}).get("name", "Unknown")
+        title = article.get("title") or "No title"
+        description = article.get("description") or "No description available"
+        url = article.get("url", "")
+        published = article.get("publishedAt", "Unknown")
+
+        print("\n" + "=" * 60)
+        print(f"{index}. {title}")
+        print(f"Source: {source}")
+        print(f"Published: {published}")
+        print(f"Description: {description}")
+        print(f"URL: {url}")
+
+    print("=" * 60)
+
+
+def top_headlines():
+    """Fetch top headlines from India."""
+    print("\nFetching top headlines...")
+
+    articles = fetch_news(
+        "top-headlines",
+        {
+            "country": "in",
+            "pageSize": 10
+        }
+    )
+
+    display_news(articles)
+
+
+def search_news():
+    """Search news using a keyword."""
+    keyword = input("\nEnter a keyword to search: ").strip()
+
+    if not keyword:
+        print("Please enter a valid keyword.")
+        return
+
+    print(f"\nSearching news about '{keyword}'...")
+
+    articles = fetch_news(
+        "everything",
+        {
+            "q": keyword,
+            "language": "en",
+            "sortBy": "publishedAt",
+            "pageSize": 10
+        }
+    )
+
+    display_news(articles)
+
+
+def open_article():
+    """Open a news article in the browser."""
+    keyword = input("\nEnter a keyword to find an article: ").strip()
+
+    if not keyword:
+        print("Please enter a valid keyword.")
+        return
+
+    articles = fetch_news(
+        "everything",
+        {
+            "q": keyword,
+            "language": "en",
+            "sortBy": "publishedAt",
+            "pageSize": 10
+        }
+    )
+
+    if not articles:
+        print("No articles available to open.")
+        return
+
+    display_news(articles)
+
+    try:
+        choice = int(input("\nEnter article number to open (0 to cancel): "))
+
+        if choice == 0:
+            return
+
+        if 1 <= choice <= len(articles):
+            url = articles[choice - 1].get("url", "")
+
+            if url.startswith(("https://", "http://")):
+                webbrowser.open(url)
+                print("Opening article in your browser...")
+            else:
+                print("Article URL is unavailable.")
+        else:
+            print("Invalid article number.")
+
+    except ValueError:
+        print("Please enter a valid number.")
+
+
+def main():
+    """Main menu."""
+    while True:
+        print("\n========== NEWS AGGREGATOR ==========")
+        print("1. View Top Headlines in India")
+        print("2. Search News by Keyword")
+        print("3. Search and Open an Article")
+        print("4. Exit")
+
+        choice = input("Enter your choice: ").strip()
+
+        if choice == "1":
+            top_headlines()
+        elif choice == "2":
+            search_news()
+        elif choice == "3":
+            open_article()
+        elif choice == "4":
+            print("Thank you for using News Aggregator!")
+            break
+        else:
+            print("Invalid choice. Please try again.")
+
+
+if __name__ == "__main__":
+    main()
